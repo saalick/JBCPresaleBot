@@ -98,13 +98,13 @@ def monitor_transactions():
             total_raised = get_total_bnb_held(TOTAL_RAISED_ADDRESS, BSCSCAN_API_KEY)
             tx_link = f"https://bscscan.com/tx/{tx['hash']}"
             green_dots = generate_green_dots(bnb_amount, DOTS_PER_BNB)
-
+            usd_amount = float(total_tokens_received) * 0.0000000087
             message = (
                 "<b>JBC BUY!</b>\n\n"
                 f"🟢🟢🟢{green_dots}\n\n"
-                f"<b>💰Spent:</b> {bnb_amount:.5f} BNB\n\n"
+                f"<b>💰Spent:</b> {bnb_amount:.5f} BNB | (${usd_amount})\n\n"
                 f"<b>🤑Got:</b> {total_tokens_received:,.2f} JBC\n\n"
-                f"<b>💳Price per token:</b> {price_per_token:.10f} BNB⚡\n\n"
+                f"<b>💳Price per token:</b> $ 0.0000000087\n\n"
                 f"<b>💸Total Raised:</b> {total_raised:.4f} BNB 💵\n\n"
                 "🏷️Presale Live At <a href='http://www.junglebookcrypto.com'>www.junglebookcrypto.com</a>\n\n"
                 f"<a href='{tx_link}'>TX</a> | <a href='www.junglebookcrypto.com'>Website</a> | <a href='https://x.com/JBC_Hub'>Twitter</a> | <a href='https://t.me/JBChubJBCsmart'>Telegram</a> | <a href='https://acrobat.adobe.com/id/urn:aaid:sc:AP:d7c5c7fb-2a6c-4395-ab18-ed679a717723'>WhitePaper</a>"

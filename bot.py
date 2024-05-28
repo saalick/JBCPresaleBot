@@ -101,8 +101,8 @@ def monitor_transactions():
             usd_amount = float(total_tokens_received) * 0.0000000087
             message = (
                 "<b>JBC BUY!</b>\n\n"
-                f"🟢🟢🟢{green_dots}\n\n"
-                f"<b>💰Spent:</b> {bnb_amount:.5f} BNB | (${usd_amount})\n\n"
+                f"🟢🟢🟢🟢{green_dots}\n\n"
+                f"<b>💰Spent:</b> {bnb_amount:.5f} BNB | (${usd_amount:.3f})\n\n"
                 f"<b>🤑Got:</b> {total_tokens_received:,.2f} JBC\n\n"
                 f"<b>💳Price per token:</b> $ 0.0000000087\n\n"
                 f"<b>💸Total Raised:</b> {total_raised:.4f} BNB 💵\n\n"

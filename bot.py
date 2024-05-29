@@ -62,6 +62,18 @@ def get_token_transactions(address, token_contract_address, api_key, start_time)
     
     return new_transactions
 
+def get_bnb_price():
+    url = "https://api.binance.com/api/v1/ticker/price?symbol=BNBUSDT"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return float(data['price'])
+        else:
+            return None
+    except (ConnectionError, Timeout):
+        return None
+
 
 def generate_green_dots(bnb_amount, dots_per_bnb):
     num_dots = int(bnb_amount / dots_per_bnb)
@@ -73,6 +85,12 @@ def monitor_transactions():
     processed_tx_hashes = set()
 
     while True:
+        bnb_price = float(get_bnb_price())
+        if bnb_price is None:
+            print("Failed to fetch BNB price.")
+            time.sleep(CHECK_INTERVAL)
+            continue
+            
         new_bnb_transactions = get_bnb_transactions(BNB_RECEIVING_ADDRESS, BSCSCAN_API_KEY, start_time)
         
         for tx in new_bnb_transactions:
@@ -80,7 +98,7 @@ def monitor_transactions():
                 continue
             
             sender_address = tx['from']
-            bnb_amount = int(tx['value']) / 10**18
+            bnb_amount = float(int(tx['value']) / 10**18)
 
             token_transactions = get_token_transactions(sender_address, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
             total_tokens_received = 0
@@ -92,7 +110,7 @@ def monitor_transactions():
 
             tx_link = f"https://bscscan.com/tx/{tx['hash']}"
             green_dots = generate_green_dots(bnb_amount, DOTS_PER_BNB)
-            usd_amount = float(total_tokens_received) * 0.0000000087
+            usd_amount = bnb_amount * bnb_price
             message = (
                 "<b>JBC BUY!</b>\n\n"
                 f"🟢🟢🟢🟢{green_dots}\n\n"

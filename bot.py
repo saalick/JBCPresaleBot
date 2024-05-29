@@ -63,16 +63,17 @@ def get_token_transactions(address, token_contract_address, api_key, start_time)
     return new_transactions
 
 def get_bnb_price():
-    url = "https://api.binance.com/api/v1/ticker/price?symbol=BNBUSDT"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            return float(data['price'])
-        else:
-            return None
-    except (ConnectionError, Timeout):
-        return None
+  url = "https://min-api.cryptocompare.com/data/price?fsym=bnb&tsyms=USD"
+  try:
+    response = requests.get(url)
+    #print(response.json())
+    if response.status_code == 200:
+      data = response.json()
+      return float(data['USD'])
+    else:
+      return None
+  except (ConnectionError, Timeout):
+    return None
 
 
 def generate_green_dots(bnb_amount, dots_per_bnb):

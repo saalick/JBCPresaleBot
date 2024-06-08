@@ -13,24 +13,27 @@ USDT_RECEIVING_ADDRESS = '0x32e150a3047F8D4aCD5Ca541F1DA01d158Ccc225'
 TOKEN_SENDING_ADDRESS = '0x12E202C2A4DBe522F4388A550070339D27Ed3A38'
 TOKEN_CONTRACT_ADDRESS = '0xD10c40eae9B675EEAAF20C84E5D274aBC109281F'
 USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955'
+MATIC_CONTRACT_ADDRESS = '0xCC42724C6683B7E57334c4E856f4c9965ED682bD'
 CHECK_INTERVAL = 5  # Check every 5 seconds
-DOTS_PER_BNB = 0.5  # One dot per 0.1 BNB
+DOTS_PER_BNB = 0.1  # One dot per 0.1 BNB
 
-
-IMAGE_URL = 'https://i.imgur.com/M0WbNyC.jpeg'
+IMAGE_URL = 'https://i.imgur.com/hDF9XpV.jpeg'
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 def send_telegram_message(message, image_url):
-    print("Sending message to Telegram...")
-    bot.send_photo(TELEGRAM_CHAT_ID, photo=image_url, caption=message, parse_mode='HTML')
+    try:
+        bot.send_photo(TELEGRAM_CHAT_ID, photo=image_url, caption=message, parse_mode='HTML')
+        print("Message sent to Telegram successfully.")
+    except Exception as e:
+        print(f"Failed to send message to Telegram: {e}")
 
 def make_request_with_retries(url, retries=5, backoff_factor=1):
     for i in range(retries):
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                print(f"Request successful: {url}")
+                
                 return response.json()
             else:
                 print(f"Non-200 response: {response.status_code} for {url}")
@@ -52,7 +55,7 @@ def get_bnb_transactions(address, api_key, start_time):
     for tx in transactions['result']:
         tx_time = int(tx['timeStamp'])
         if tx_time >= start_time and tx['to'].lower() == address.lower() and int(tx['value']) > 0:
-            print(f"New BNB transaction found: {tx}")
+
             new_transactions.append(tx)
     
     return new_transactions
@@ -60,19 +63,20 @@ def get_bnb_transactions(address, api_key, start_time):
 def get_token_transactions(address, token_contract_address, api_key, start_time):
     url = f"https://api.bscscan.com/api?module=account&action=tokentx&contractaddress={token_contract_address}&address={address}&page=1&offset=100&sort=asc&apikey={api_key}"
     transactions = make_request_with_retries(url)
-    
+
+
     if not transactions or transactions['status'] != '1':
-        print(f"Failed to fetch token transactions or no valid transactions found for {address}")
         return []
 
     new_transactions = []
     for tx in transactions['result']:
         tx_time = int(tx['timeStamp'])
-        if tx_time >= start_time and tx['from'].lower() == address.lower():
-            print(f"New token transaction found: {tx}")
+        if tx_time >= start_time and tx['to'].lower() == address.lower():
+            print(f"New token transaction found: {tx}")  # Debug: Print each found transaction
             new_transactions.append(tx)
     
     return new_transactions
+
 
 def get_usdt_transactions(receiving_address, token_contract_address, api_key, start_time):
     url = f"https://api.bscscan.com/api?module=account&action=tokentx&contractaddress={token_contract_address}&address={receiving_address}&page=1&offset=100&sort=asc&apikey={api_key}"
@@ -86,7 +90,22 @@ def get_usdt_transactions(receiving_address, token_contract_address, api_key, st
     for tx in transactions['result']:
         tx_time = int(tx['timeStamp'])
         if tx_time >= start_time and tx['to'].lower() == receiving_address.lower():
-            print(f"New USDT transaction found: {tx}")
+            new_transactions.append(tx)
+    
+    return new_transactions
+
+def get_matic_transactions(receiving_address, token_contract_address, api_key, start_time):
+    url = f"https://api.bscscan.com/api?module=account&action=tokentx&contractaddress={token_contract_address}&address={receiving_address}&page=1&offset=100&sort=asc&apikey={api_key}"
+    transactions = make_request_with_retries(url)
+    
+    if not transactions or transactions['status'] != '1':
+        print(f"Failed to fetch Matic transactions or no valid transactions found for {receiving_address}")
+        return []
+
+    new_transactions = []
+    for tx in transactions['result']:
+        tx_time = int(tx['timeStamp'])
+        if tx_time >= start_time and tx['to'].lower() == receiving_address.lower():
             new_transactions.append(tx)
     
     return new_transactions
@@ -97,7 +116,6 @@ def get_bnb_price():
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            print(f"Fetched BNB price: {data['USD']} USD")
             return float(data['USD'])
         else:
             print(f"Failed to fetch BNB price, non-200 response: {response.status_code}")
@@ -108,7 +126,6 @@ def get_bnb_price():
 
 def generate_green_dots(amount, dots_per_unit):
     num_dots = int(amount / dots_per_unit)
-    print(f"Generated {num_dots} green dots for amount: {amount}")
     return '🟢' * num_dots
 
 def monitor_transactions():
@@ -132,18 +149,13 @@ def monitor_transactions():
 
             sender_address = tx['from']
             bnb_amount = float(int(tx['value']) / 10**18)
-            print(f"Processing BNB transaction from {sender_address} of {bnb_amount} BNB")
 
             token_transactions = get_token_transactions(TOKEN_SENDING_ADDRESS, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
             total_tokens_received = 0
             for token_tx in token_transactions:
-                if token_tx['to'].lower() == sender_address.lower():
-                    tokens_received = int(token_tx['value']) / 10**18
-                    total_tokens_received += tokens_received
-                    print(f"Token transaction found: {tokens_received} tokens sent to {sender_address}")
-
-            
-            
+                tokens_received = int(token_tx['value']) / 10**18
+                total_tokens_received += tokens_received
+                print(f"Accumulating tokens: {tokens_received} from transaction {token_tx['hash']}")  # Debug: Print each accumulated token amount
 
             tx_link = f"https://bscscan.com/tx/{tx['hash']}"
             green_dots = generate_green_dots(bnb_amount, DOTS_PER_BNB)
@@ -165,24 +177,19 @@ def monitor_transactions():
         new_usdt_transactions = get_usdt_transactions(USDT_RECEIVING_ADDRESS, USDT_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
         
         for tx in new_usdt_transactions:
-            print(f"Processing USDT Transaction: {tx['hash']}")
             if tx['hash'] in processed_tx_hashes:
                 continue
 
             sender_address = tx['from']
-            usdt_amount = float(int(tx['value']) / 10**18)  # USDT has 18 decimal places
-            print(f"Processing USDT transaction from {sender_address} of {usdt_amount} USDT")
+            usdt_amount = float(int(tx['value']) / 10**18)
 
             token_transactions = get_token_transactions(TOKEN_SENDING_ADDRESS, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
             total_tokens_received = 0
             for token_tx in token_transactions:
-                if token_tx['to'].lower() == sender_address.lower():
-                    tokens_received = int(token_tx['value']) / 10**18
-                    total_tokens_received += tokens_received
-                    print(f"Token transaction found: {tokens_received} tokens sent to {sender_address}")
-
-            
-
+                tokens_received = int(token_tx['value']) / 10**18
+                total_tokens_received += tokens_received
+                print(f"Accumulating tokens: {tokens_received} from transaction {token_tx['hash']}")  # Debug: Print each accumulated token amount
+                
             tx_link = f"https://bscscan.com/tx/{tx['hash']}"
             green_dots = generate_green_dots(usdt_amount, DOTS_PER_BNB)
             usd_amount = usdt_amount  # 1 USDT = 1 USD
@@ -190,6 +197,38 @@ def monitor_transactions():
                 "<b>JBC BUY!</b>\n\n"
                 f"🟢🟢🟢🟢{green_dots}\n\n"
                 f"<b>💰Spent:</b> {usdt_amount:.2f} USDT | (${usd_amount:.2f})\n\n"
+                f"<b>🤑Got:</b> {total_tokens_received:,.2f} JBC\n\n"
+                f"<b>💳Price per token:</b> $0.0000000087 \n\n"
+                "🏷️Presale Live At <a href='http://www.junglebookcrypto.com'>www.junglebookcrypto.com</a>\n\n"
+                f"<a href='{tx_link}'>TX</a> | <a href='www.junglebookcrypto.com'>Website</a> | <a href='https://x.com/JBC_Hub'>Twitter</a> | <a href='https://t.me/JBChubJBCsmart'>Telegram</a> | <a href='https://acrobat.adobe.com/id/urn:aaid:sc:AP:d7c5c7fb-2a6c-4395-ab18-ed679a717723'>WhitePaper</a>"
+            )
+
+            send_telegram_message(message, IMAGE_URL)
+            processed_tx_hashes.add(tx['hash'])
+            
+        # MATIC Transactions
+        new_matic_transactions = get_matic_transactions(USDT_RECEIVING_ADDRESS, MATIC_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
+        for tx in new_matic_transactions:
+            if tx['hash'] in processed_tx_hashes:
+                continue
+
+            sender_address = tx['from']
+            matic_amount = float(int(tx['value']) / 10**18)
+
+            token_transactions = get_token_transactions(TOKEN_SENDING_ADDRESS, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
+            total_tokens_received = 0
+            for token_tx in token_transactions:
+                tokens_received = int(token_tx['value']) / 10**18
+                total_tokens_received += tokens_received
+                print(f"Accumulating tokens: {tokens_received} from transaction {token_tx['hash']}")  # Debug: Print each accumulated token amount
+
+            tx_link = f"https://bscscan.com/tx/{tx['hash']}"
+            green_dots = generate_green_dots(matic_amount, DOTS_PER_BNB)
+            usd_amount = matic_amount  
+            message = (
+                "<b>JBC BUY!</b>\n\n"
+                f"🟢🟢🟢🟢{green_dots}\n\n"
+                f"<b>💰Spent:</b> {matic_amount:.3f} Matic\n\n"
                 f"<b>🤑Got:</b> {total_tokens_received:,.2f} JBC\n\n"
                 f"<b>💳Price per token:</b> $0.0000000087 \n\n"
                 "🏷️Presale Live At <a href='http://www.junglebookcrypto.com'>www.junglebookcrypto.com</a>\n\n"

@@ -281,6 +281,47 @@ def monitor_transactions():
             print("sent message")
             start_time = int(time.time())
             processed_tx_hashes.add(tx['hash'])
+            
+        #USDC Part
+        new_usdc_transactions = get_usdc_transactions(USDT_RECEIVING_ADDRESS, USDC_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
+        
+        for tx in new_usdc_transactions:
+            if tx['hash'] in processed_tx_hashes:
+                continue
+            
+            sender_address = tx['from']
+            usdc_amount = int(tx['value']) / 10**18
+            get_token_transactions(sender_address, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
+
+            token_transactions = get_token_transactions(sender_address, TOKEN_CONTRACT_ADDRESS, BSCSCAN_API_KEY, start_time)
+            total_tokens_received = 0
+            for token_tx in token_transactions:
+                tokens_received = int(token_tx['value']) / 10**18
+                total_tokens_received += tokens_received
+                print(f"Accumulating tokens: {tokens_received} from transaction {token_tx['hash']}")  # Debug: Print each accumulated token amount
+
+        
+            #total_raised = get_total_bnb_held(TOTAL_RAISED_ADDRESS, BSCSCAN_API_KEY)
+            tx_link = f"https://bscscan.com/tx/{tx['hash']}"
+            print(tx_link)
+            green_dots = generate_green_dots(usdc_amount, DOTS_PER_BNB)
+            message = (
+                "<b>JBC BUY!</b>\n\n"
+                f"🟢🟢🟢{green_dots}\n\n"
+                f"<b>💰Spent:</b> {usdc_amount:.5f} USDC]\n\n"
+                f"<b>🤑Got:</b> {total_tokens_received:,.2f} JBC\n\n"
+                f"<b>💳Price per token:</b> $ 0.0000000087\n\n"
+                #f"<b>💸Total Raised:</b> {total_raised:.4f} BNB 💵\n\n"
+                "🏷️Presale Live At <a href='http://www.junglebookcrypto.com'>www.junglebookcrypto.com</a>\n\n"
+                f"<a href='{tx_link}'>TX</a> | <a href='www.junglebookcrypto.com'>Website</a> | <a href='https://x.com/JBC_Hub'>Twitter</a> | <a href='https://t.me/JBChubJBCsmart'>Telegram</a> | <a href='https://acrobat.adobe.com/id/urn:aaid:sc:AP:d7c5c7fb-2a6c-4395-ab18-ed679a717723'>WhitePaper</a>"
+            )
+            
+     
+            send_telegram_message(message, IMAGE_URL)
+            #bot.send_message(TELEGRAM_CHAT_ID, message)
+            print("sent message")
+            start_time = int(time.time())
+            processed_tx_hashes.add(tx['hash'])
 
         time.sleep(CHECK_INTERVAL)
 
